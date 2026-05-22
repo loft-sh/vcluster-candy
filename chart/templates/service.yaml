@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vcluster-candy.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vcluster-candy.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: {{ required "service.clusterIP must be set to a stable IP referenced by vcluster workloads" .Values.service.clusterIP }}
+  internalTrafficPolicy: Local
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP
+      targetPort: 53
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+    - name: metrics
+      port: 9153
+      protocol: TCP
+      targetPort: 9153
+  selector:
+    {{- include "vcluster-candy.selectorLabels" . | nindent 4 }}
