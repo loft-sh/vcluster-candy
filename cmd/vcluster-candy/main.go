@@ -90,7 +90,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	for protocol := range dnsClients {
+	for _, protocol := range []string{"udp", "tcp"} {
 		// new dns server using the dns handler
 		dnsServer := dnsserver.NewServer(dnsAddr, protocol, candyHandler, mgr.GetLogger().WithName("dns-"+protocol))
 
