@@ -33,8 +33,15 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           command:
             - /vcluster-candy
+          args:
+            - --node-name=$(NODE_NAME)
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
