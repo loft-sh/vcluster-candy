@@ -40,7 +40,7 @@ func (s *Server) Start(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		log.Info("shutdown requested, stopping DNS server")
-		shutCtx, shutCancel := context.WithTimeout(ctx, 5*time.Second)
+		shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutCancel()
 		if err := s.ShutdownContext(shutCtx); err != nil {
 			return fmt.Errorf("server shutdown: %w", err)
