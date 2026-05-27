@@ -18,6 +18,28 @@ the `vcluster.loft.sh/managed-by` label) are answered with `REFUSED`.
 ---
 
 ## How it works
+```mermaid
+flowchart TB
+
+subgraph HOST["Host Cluster"]
+    HCD["Host CoreDNS"]
+
+    subgraph NA["Node A"]
+        W["Workload Pod"]
+        CA["Candy Pod"]
+    end
+
+    subgraph NB["Node B"]
+        TCD["Tenant CoreDNS"]
+        CB["Candy Pod"]
+    end
+end
+
+W -->|DNS query| CA
+CA -->|external| HCD
+CA -->|internal| TCD
+```
+
 1. The DaemonSet expects traffic from pods with the `vcluster.loft.sh/managed-by: <vcluster-name>` label.
 2. On each DNS request, the proxy:
     - looks up the requesting pod by the source IP,
