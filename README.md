@@ -71,7 +71,7 @@ The Service exposed by the chart uses `internalTrafficPolicy: Local` so that eac
 
 ```bash
 helm upgrade --install vcluster-candy ./chart \
-  --namespace kube-system \
+  --namespace vcluster-candy --create-namespace \
   --set service.clusterIP=10.96.0.42
 ```
 
