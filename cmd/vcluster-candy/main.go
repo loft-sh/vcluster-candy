@@ -58,7 +58,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Info("starting vcluster-candy with options",
+	log.Info("Starting vcluster-candy with options",
 		"nodeName", nodeName,
 		"dnsAddr", dnsAddr,
 		"metricsAddr", metricsAddr,
@@ -140,7 +140,7 @@ func main() {
 	}
 
 	// start manager
-	log.Info("starting manager")
+	log.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		log.Error(err, "Failed to run manager")
 		os.Exit(1)

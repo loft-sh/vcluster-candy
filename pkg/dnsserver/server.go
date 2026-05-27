@@ -30,7 +30,7 @@ func NewServer(addr string, protocol string, handler dns.Handler, logger logr.Lo
 func (s *Server) Start(ctx context.Context) error {
 	log := s.logger
 
-	log.Info("starting DNS server", "addr", s.Addr, "protocol", s.Net)
+	log.Info("Starting DNS server", "addr", s.Addr, "protocol", s.Net)
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -39,7 +39,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		log.Info("shutdown requested, stopping DNS server")
+		log.Info("Shutdown requested, stopping DNS server")
 		shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutCancel()
 		if err := s.ShutdownContext(shutCtx); err != nil {
