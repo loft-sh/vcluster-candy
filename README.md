@@ -15,6 +15,10 @@ query to the right upstream:
 Queries from pods that are not managed by a vcluster (i.e. that do not carry
 the `vcluster.loft.sh/managed-by` label) are answered with `REFUSED`.
 
+Both **UDP** and **TCP** listeners are started on port 53, and each request
+is forwarded upstream using a protocol-specific client (UDP queries are
+forwarded over UDP, TCP queries over TCP).
+
 ---
 
 ## How it works
@@ -42,17 +46,29 @@ CA -->|internal| TCD
 
 1. The DaemonSet expects traffic from pods with the `vcluster.loft.sh/managed-by: <vcluster-name>` label.
 2. On each DNS request, the proxy:
-    - looks up the requesting pod by the source IP,
+    - looks up the requesting pod by the source IP (only pods scheduled on
+      the same node are cached, see [Node-local pod cache](#node-local-pod-cache)),
     - reads the `vcluster.loft.sh/managed-by` label to identify the vcluster,
     - if the query name matches one of the configured internal-domain
       suffixes, forwards it to the vcluster's `kube-dns` Service
       (`kube-dns-x-kube-system-x-<vcluster-name>` in the host cluster),
     - otherwise forwards it to the upstream servers from
-      `/etc/resolv.conf`.
+      `/etc/resolv.conf`,
+    - uses a UDP or TCP client to talk to the upstream depending on the
+      protocol of the incoming request.
 3. Pods that are not managed by a vcluster get `REFUSED` — this proxy is not
    intended to serve host-cluster workloads.
 
 The Service exposed by the chart uses `internalTrafficPolicy: Local` so that each pod talks to the `vcluster-candy` instance running on its own node.
+
+### Node-local pod cache
+
+Each `vcluster-candy` pod only needs to resolve queries from pods on its own
+node (because the Service uses `internalTrafficPolicy: Local`). To keep memory
+usage low and avoid watching every pod in the cluster, the controller-runtime
+cache is scoped with a field selector on `spec.nodeName`. The node name is
+injected into the container as the `NODE_NAME` environment variable (from the
+downward API) and passed to the binary via `--node-name=$(NODE_NAME)`.
 
 ---
 
@@ -80,6 +96,9 @@ helm upgrade --install vcluster-candy ./chart \
 ### Point vcluster workloads at vcluster-candy
 
 Configure your vcluster so that synced workload pods use the `vcluster-candy`
+ClusterIP as their nameserver. The patch below skips the vcluster's own
+`kube-dns` pods (they must keep their original DNS configuration), and
+rewrites every other synced pod to point at `vcluster-candy`:
 
 ```yaml
 # vcluster.yaml
@@ -91,10 +110,16 @@ sync:
         - path: spec
           expression: |
             (value => {
+              var labels = context.virtualObject.metadata.labels;
+              if (labels["k8s-app"] === "vcluster-kube-dns") {
+                return value;
+              }
+
               value.dnsPolicy = "None";
-              value.dnsConfig.nameservers = ["10.96.0.42"]; 
+              value.dnsConfig.nameservers = ["10.96.0.42"];
               return value;
             })(value)
+
 ```
 
 ---
@@ -105,6 +130,7 @@ sync:
 
 | Flag                          | Default            | Description                                                                            |
 |-------------------------------|--------------------|----------------------------------------------------------------------------------------|
+| `--node-name`                 | _(required)_       | Name of the node this instance runs on. Used to scope the pod cache to the local node. Injected by the chart from the downward API. |
 | `--dns-bind-address`          | `:53`              | Address the DNS server binds to (UDP and TCP listeners are started).                   |
 | `--metrics-bind-address`      | `:9153`            | Address the Prometheus metrics endpoint binds to.                                      |
 | `--health-probe-bind-address` | `:8081`            | Address the health/readiness endpoints bind to (`/healthz`, `/readyz`).                |
@@ -129,11 +155,18 @@ Standard controller-runtime / zap logger flags are also accepted
 
 See [`chart/values.yaml`](chart/values.yaml) for the complete list.
 
+The DaemonSet sets the `NODE_NAME` environment variable from
+`spec.nodeName` (via the downward API) and forwards it to the binary as
+`--node-name=$(NODE_NAME)`, so each pod's cache only watches pods on its
+own node.
+
 ### RBAC
 
 The chart creates a `ClusterRole` granting `get`, `list`, `watch` on
 `pods` and `services` cluster-wide — needed to look up pods by IP and to
-discover each vcluster's `kube-dns` Service.
+discover each vcluster's `kube-dns` Service. The pod cache is filtered
+server-side by `spec.nodeName`, so each instance only receives events for
+pods on its own node.
 
 ---
 
@@ -154,7 +187,7 @@ discover each vcluster's `kube-dns` Service.
 ```
 cmd/vcluster-candy/   # main entry point (controller-runtime manager + DNS server)
 pkg/candy/            # DNS handler: pod lookup, routing decision, upstream forwarding
-pkg/dnsserver/        # DNS server implemented as a manager.Runnable
+pkg/dnsserver/        # DNS server implemented as a manager.Runnable (one per protocol)
 pkg/util/             # helpers: resolv.conf parsing, suffix normalization, name hashing
 chart/                # Helm chart
 ```
