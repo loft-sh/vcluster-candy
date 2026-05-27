@@ -20,9 +20,12 @@ func TestServeDNS(t *testing.T) {
 
 	t.Run("internal request", func(t *testing.T) {
 		dnsClient := &mockDNSClient{}
+		dnsClients := map[string]DNSClient{
+			"udp": dnsClient,
+		}
 		k8sClient := &mockReader{}
 
-		candy := NewCandy(k8sClient, dnsClient, []string{".internal.local"}, []string{"8.8.8.8:53"}, logr.Discard())
+		candy := NewCandy(k8sClient, dnsClients, []string{".internal.local"}, []string{"8.8.8.8:53"}, logr.Discard())
 
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -60,9 +63,12 @@ func TestServeDNS(t *testing.T) {
 
 	t.Run("external request", func(t *testing.T) {
 		dnsClient := &mockDNSClient{}
+		dnsClients := map[string]DNSClient{
+			"udp": dnsClient,
+		}
 		k8sClient := &mockReader{}
 
-		candy := NewCandy(k8sClient, dnsClient, []string{".internal.local"}, []string{"8.8.8.8:53"}, logr.Discard())
+		candy := NewCandy(k8sClient, dnsClients, []string{".internal.local"}, []string{"8.8.8.8:53"}, logr.Discard())
 
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -94,9 +100,12 @@ func TestServeDNS(t *testing.T) {
 
 	t.Run("non-vcluster managed pod", func(t *testing.T) {
 		dnsClient := &mockDNSClient{}
+		dnsClients := map[string]DNSClient{
+			"udp": dnsClient,
+		}
 		k8sClient := &mockReader{}
 
-		candy := NewCandy(k8sClient, dnsClient, []string{".internal.local"}, []string{"8.8.8.8:53"}, logr.Discard())
+		candy := NewCandy(k8sClient, dnsClients, []string{".internal.local"}, []string{"8.8.8.8:53"}, logr.Discard())
 
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -248,7 +257,6 @@ func TestIsInternalDNSRequest(t *testing.T) {
 		})
 	}
 }
-
 
 type mockDNSClient struct {
 	mock.Mock

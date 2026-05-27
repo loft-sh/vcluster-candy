@@ -29,16 +29,16 @@ type DNSClient interface {
 
 type Candy struct {
 	k8sClient       client.Reader
-	dnsClient       DNSClient
+	dnsClients      map[string]DNSClient
 	internalDomains []string
 	hostDNSServers  []string
 	logger          logr.Logger
 }
 
-func NewCandy(k8sClient client.Reader, dnsClient DNSClient, internalDomains []string, hostDNSServers []string, logger logr.Logger) *Candy {
+func NewCandy(k8sClient client.Reader, dnsClients map[string]DNSClient, internalDomains []string, hostDNSServers []string, logger logr.Logger) *Candy {
 	return &Candy{
 		k8sClient:       k8sClient,
-		dnsClient:       dnsClient,
+		dnsClients:      dnsClients,
 		internalDomains: util.NormalizeSuffixes(internalDomains),
 		hostDNSServers:  hostDNSServers,
 		logger:          logger,
@@ -50,6 +50,13 @@ var ErrUnknownPod = errors.New("unknown pod")
 // ServeDNS implements the dns.Handler interface.
 func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	log := c.logger.WithValues("requestId", r.Id)
+
+	dnsClient, err := c.getDNSClientForRequest(w)
+	if err != nil {
+		log.Error(err, "failed to get DNS client for request")
+		errorFunc(w, r, dns.RcodeRefused)
+		return
+	}
 
 	// get upstream DNS servers
 	dnsServers, err := c.getDNSServersForRequest(context.Background(), w, r)
@@ -67,7 +74,7 @@ func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 	// forward request
 	for _, dnsServer := range dnsServers {
-		resp, _, err := c.dnsClient.Exchange(r, dnsServer)
+		resp, _, err := dnsClient.Exchange(r, dnsServer)
 		if err != nil {
 			log.Error(err, "upstream forward failed")
 			continue
@@ -82,6 +89,21 @@ func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 	log.Info("failed to serveDNS")
 	errorFunc(w, r, dns.RcodeServerFailure)
+}
+
+func (c *Candy) getDNSClientForRequest(w dns.ResponseWriter) (DNSClient, error) {
+	remoteAddr := w.RemoteAddr()
+	if remoteAddr == nil {
+		return nil, fmt.Errorf("response writer has no remote address")
+	}
+
+	network := remoteAddr.Network()
+	dnsClient, ok := c.dnsClients[network]
+	if !ok {
+		return nil, fmt.Errorf("no DNS client for %s", network)
+	}
+
+	return dnsClient, nil
 }
 
 func (c *Candy) getDNSServersForRequest(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) ([]string, error) {

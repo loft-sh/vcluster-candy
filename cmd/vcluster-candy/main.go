@@ -70,10 +70,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// dns clients
+	dnsClients := map[string]candy.DNSClient{
+		"udp": &dns.Client{Net: "udp"},
+		"tcp": &dns.Client{Net: "tcp"},
+	}
+
 	// new dns handler
 	candyHandler := candy.NewCandy(
 		mgr.GetClient(),
-		new(dns.Client),
+		dnsClients,
 		internalDomains,
 		hostDNSServers,
 		mgr.GetLogger().WithName("candy"))
@@ -84,7 +90,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, protocol := range []string{"udp", "tcp"} {
+	for protocol := range dnsClients {
 		// new dns server using the dns handler
 		dnsServer := dnsserver.NewServer(dnsAddr, protocol, candyHandler, mgr.GetLogger().WithName("dns-"+protocol))
 
