@@ -98,8 +98,12 @@ func main() {
 
 	// dns clients
 	dnsClients := map[string]candy.DNSClient{
-		"udp": &dns.Client{Net: "udp"},
-		"tcp": &dns.Client{Net: "tcp"},
+		"udp":  &dns.Client{Net: "udp"},
+		"udp4": &dns.Client{Net: "udp"},
+		"udp6": &dns.Client{Net: "udp"},
+		"tcp":  &dns.Client{Net: "tcp"},
+		"tcp4": &dns.Client{Net: "tcp"},
+		"tcp6": &dns.Client{Net: "tcp"},
 	}
 
 	// new dns handler
