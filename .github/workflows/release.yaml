@@ -93,18 +93,18 @@ jobs:
           helm package ./chart --destination ./.deploy --version ${CHART_VERSION}
 
           # Push to OCI registry and capture stdout
-          OUTPUT=$(helm push ./.deploy/*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts/vcluster-candy)
+          OUTPUT=$(helm push ./.deploy/*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts 2>&1)
           
-          # Extract SHA256 digest via regex
-          DIGEST=$(echo "$OUTPUT" | grep -oE "sha256:[a-fA-F0-9]{64}")
-          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          # Extract tag and digest
+          CHART_TAG=$(echo "$OUTPUT" | awk '/Pushed:/ {print $2}')
+          echo "chart_tag=$CHART_TAG" >> $GITHUB_OUTPUT
           
-          # Extract version from Chart.yaml dynamically
-          echo "chart_version=${CHART_VERSION}" >> $GITHUB_OUTPUT
+          CHART_DIGEST=$(echo "$OUTPUT" | awk '/Digest:/ {print $2}')
+          echo "chart_digest=$CHART_DIGEST" >> $GITHUB_OUTPUT
 
       - name: Sign Helm Chart Artifact
         env:
-          CHART_URL: ghcr.io/${{ github.repository_owner }}/helm-charts/vcluster-candy:${{ steps.build-push-helm-chart.outputs.chart_version }}
-          CHART_DIGEST: ${{ steps.build-push-helm-chart.outputs.digest }}
+          CHART_TAG: ${{ steps.build-push-helm-chart.outputs.chart_tag }}
+          CHART_DIGEST: ${{ steps.build-push-helm-chart.outputs.chart_digest }}
         run: |
-          cosign sign --yes "${CHART_URL}@${CHART_DIGEST}"
+          cosign sign --yes "${CHART_TAG}@${CHART_DIGEST}"
