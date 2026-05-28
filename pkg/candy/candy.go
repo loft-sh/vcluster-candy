@@ -11,17 +11,44 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/loft-sh/vcluster-candy/pkg/util"
 	"github.com/miekg/dns"
+	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 const IndexByPodIP = "indexbypodip"
 const IndexByNamespacedName = "indexbynamespacedname"
 const ManagedByLabel = "vcluster.loft.sh/managed-by"
 const DNSPort = "53"
+
+var dnsRequestsCounter = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "dns_requests_total",
+		Help: "Number of DNS requests received",
+	},
+)
+
+var dnsRequestsErrorCounter = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "dns_requests_error_total",
+		Help: "Number of DNS requests with error",
+	},
+)
+
+var dnsRequestsUpstreamErrorCounter = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "dns_requests_upstream_error",
+		Help: "Number of DNS requests with error",
+	},
+)
+
+func init() {
+	metrics.Registry.MustRegister(dnsRequestsCounter, dnsRequestsErrorCounter, dnsRequestsUpstreamErrorCounter)
+}
 
 type DNSClient interface {
 	Exchange(m *dns.Msg, address string) (r *dns.Msg, rtt time.Duration, err error)
@@ -49,10 +76,12 @@ var ErrUnknownPod = errors.New("unknown pod")
 
 // ServeDNS implements the dns.Handler interface.
 func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	dnsRequestsCounter.Inc()
 	log := c.logger.WithValues("requestId", r.Id)
 
 	dnsClient, err := c.getDNSClientForRequest(w)
 	if err != nil {
+		dnsRequestsErrorCounter.Inc()
 		log.Error(err, "failed to get DNS client for request")
 		errorFunc(w, r, dns.RcodeRefused)
 		return
@@ -61,6 +90,7 @@ func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	// get upstream DNS servers
 	dnsServers, err := c.getDNSServersForRequest(context.Background(), w, r)
 	if err != nil {
+		dnsRequestsErrorCounter.Inc()
 		if errors.Is(err, ErrUnknownPod) {
 			log.Info("request is not managed by vcluster, refusing")
 			errorFunc(w, r, dns.RcodeRefused)
@@ -76,17 +106,21 @@ func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	for _, dnsServer := range dnsServers {
 		resp, _, err := dnsClient.Exchange(r, dnsServer)
 		if err != nil {
+			dnsRequestsErrorCounter.Inc()
+			dnsRequestsUpstreamErrorCounter.Inc()
 			log.Error(err, "upstream forward failed")
 			continue
 		}
 
 		// return response
 		if err := w.WriteMsg(resp); err != nil {
+			dnsRequestsErrorCounter.Inc()
 			log.V(1).Error(err, "failed to write DNS response")
 		}
 		return
 	}
 
+	dnsRequestsErrorCounter.Inc()
 	log.Info("failed to serveDNS")
 	errorFunc(w, r, dns.RcodeServerFailure)
 }
