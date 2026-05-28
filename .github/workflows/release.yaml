@@ -89,8 +89,9 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.release_version }}
         run: |
+          set -euo pipefail
           CHART_VERSION=${VERSION#v}
-          helm package ./chart --destination ./.deploy --version ${CHART_VERSION}
+          helm package ./chart --destination ./.deploy --version ${CHART_VERSION} --app-version ${VERSION}
 
           # Push to OCI registry and capture stdout
           OUTPUT=$(helm push ./.deploy/*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts 2>&1)
