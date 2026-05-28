@@ -96,7 +96,7 @@ jobs:
           OUTPUT=$(helm push ./.deploy/*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts/vcluster-candy)
           
           # Extract SHA256 digest via regex
-          DIGEST=$(echo "$OUTPUT" | grep -oE "sha256:[a-fA-F0-8]{64}")
+          DIGEST=$(echo "$OUTPUT" | grep -oE "sha256:[a-fA-F0-9]{64}")
           echo "digest=$DIGEST" >> $GITHUB_OUTPUT
           
           # Extract version from Chart.yaml dynamically
