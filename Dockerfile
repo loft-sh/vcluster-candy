@@ -1,5 +1,5 @@
 # Build the vcluster-candy binary
-FROM golang:1.26.0 AS builder
+FROM golang:1.26.3 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
