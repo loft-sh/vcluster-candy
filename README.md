@@ -97,8 +97,9 @@ helm upgrade --install vcluster-candy ./chart \
 
 Configure your vcluster so that synced workload pods use the `vcluster-candy`
 ClusterIP as their nameserver. The patch below skips the vcluster's own
-`kube-dns` pods (they must keep their original DNS configuration), and
-rewrites every other synced pod to point at `vcluster-candy`:
+`kube-dns` pods (they must keep their original DNS configuration) and
+host-networked pods, then rewrites the remaining synced pods to point at
+`vcluster-candy`:
 
 ```yaml
 # vcluster.yaml
@@ -111,11 +112,12 @@ sync:
           expression: |
             (value => {
               var labels = context.virtualObject.metadata.labels || {};
-              if (labels["k8s-app"] === "vcluster-kube-dns") {
+              if (labels["k8s-app"] === "vcluster-kube-dns" || value.hostNetwork) {
                 return value;
               }
 
               value.dnsPolicy = "None";
+              value.dnsConfig = value.dnsConfig || {};
               value.dnsConfig.nameservers = ["10.96.0.42"];
               return value;
             })(value)
@@ -180,6 +182,15 @@ pods on its own node.
 - **Logs:** structured logs via [zap](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/log/zap).
 
 ---
+
+## Limitations
+
+- **Pods with `spec.hostNetwork: true`** - Host-networked pods are not supported by the current implementation.
+  `vcluster-candy` attributes DNS requests by source pod IP, but host-networked pods use the node network
+  namespace and can share the node IP instead of a unique pod IP.
+- **Pods in mapped namespaces** - Pods scheduled in namespaces managed via `sync.toHost.namespaces.mappings`
+  are not supported by the current implementation. As of `vcluster-0.34`, these types of workloads lack metadata information
+  required to reliably trace back their relation with the tenant cluster control plane.
 
 ## Development
 
