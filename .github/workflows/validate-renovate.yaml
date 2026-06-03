@@ -1,0 +1,16 @@
+name: Validate Renovate Config
+
+on:
+  pull_request:
+    paths:
+      - 'renovate.json'
+      - 'renovate.json5'
+      - '.renovaterc'
+      - '.renovaterc.json'
+      - '.github/renovate.json'
+      - '.github/renovate.json5'
+      - '.github/workflows/validate-renovate.yaml'
+
+jobs:
+  validate:
+    uses: loft-sh/github-actions/.github/workflows/validate-renovate.yaml@validate-renovate/v1
