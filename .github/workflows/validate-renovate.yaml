@@ -11,6 +11,9 @@ on:
       - '.github/renovate.json5'
       - '.github/workflows/validate-renovate.yaml'
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     uses: loft-sh/github-actions/.github/workflows/validate-renovate.yaml@validate-renovate/v1
