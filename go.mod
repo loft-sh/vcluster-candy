@@ -1,6 +1,6 @@
 module github.com/loft-sh/vcluster-candy
 
-go 1.26.3
+go 1.26.4
 
 require (
 	k8s.io/api v0.36.0
