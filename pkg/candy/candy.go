@@ -92,7 +92,7 @@ func (c *Candy) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	if err != nil {
 		dnsRequestsErrorCounter.Inc()
 		if errors.Is(err, ErrUnknownPod) {
-			log.Info("request is not managed by vcluster, refusing")
+			log.Info("request is not managed by vcluster, refusing", "reason", err)
 			errorFunc(w, r, dns.RcodeRefused)
 			return
 		}
@@ -175,25 +175,7 @@ func (c *Candy) getDNSServersForRequest(ctx context.Context, w dns.ResponseWrite
 
 // SetupWithManager is used to create pod and service indexers
 func (c *Candy) SetupWithManager(mgr ctrl.Manager) error {
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, IndexByPodIP, func(rawObj client.Object) []string {
-		pod := rawObj.(*corev1.Pod)
-
-		// only index pods managed by vcluster
-		if _, ok := pod.Labels[ManagedByLabel]; !ok {
-			return nil
-		}
-
-		ips := sets.NewString()
-		if pod.Status.PodIP != "" {
-			ips.Insert(pod.Status.PodIP)
-		}
-		for _, podIP := range pod.Status.PodIPs {
-			if podIP.IP != "" {
-				ips.Insert(podIP.IP)
-			}
-		}
-		return ips.List()
-	})
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, IndexByPodIP, podIPsIndexerFunc)
 	if err != nil {
 		return fmt.Errorf("failed to setup IndexByPodIP index: %w", err)
 	}
@@ -208,6 +190,45 @@ func (c *Candy) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return nil
+}
+
+func podIPsIndexerFunc(rawObj client.Object) []string {
+	pod, ok := rawObj.(*corev1.Pod)
+	if !ok {
+		return nil
+	}
+
+	// only index pods managed by vcluster
+	if _, ok := pod.Labels[ManagedByLabel]; !ok {
+		return nil
+	}
+
+	// ignore host network pods: they share the node IP, so we can't attribute a
+	// request to a single tenant. Such pods get refused rather than mis-served.
+	if pod.Spec.HostNetwork {
+		return nil
+	}
+
+	// ignore succeeded or failed pods
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		return nil
+	}
+
+	// ignore deleted pods
+	if pod.DeletionTimestamp != nil {
+		return nil
+	}
+
+	ips := sets.NewString()
+	if pod.Status.PodIP != "" {
+		ips.Insert(pod.Status.PodIP)
+	}
+	for _, podIP := range pod.Status.PodIPs {
+		if podIP.IP != "" {
+			ips.Insert(podIP.IP)
+		}
+	}
+	return ips.List()
 }
 
 func errorFunc(w dns.ResponseWriter, r *dns.Msg, rcode int) {

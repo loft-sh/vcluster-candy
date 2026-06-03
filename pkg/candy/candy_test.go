@@ -258,6 +258,101 @@ func TestIsInternalDNSRequest(t *testing.T) {
 	}
 }
 
+func TestPodIPsIndexerFunc(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		rawObj     client.Object
+		wantResult []string
+	}{
+		{
+			name: "managed pod",
+			rawObj: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{ManagedByLabel: "vcluster"},
+				},
+				Status: corev1.PodStatus{
+					PodIP: "10.0.0.1",
+					PodIPs: []corev1.PodIP{
+						{IP: "10.0.0.2"},
+					},
+				},
+			},
+			wantResult: []string{"10.0.0.1", "10.0.0.2"},
+		},
+		{
+			name: "non-managed pod",
+			rawObj: &corev1.Pod{
+				Status: corev1.PodStatus{
+					PodIP: "10.0.0.1",
+				},
+			},
+			wantResult: nil,
+		},
+		{
+			name: "host network pod",
+			rawObj: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{ManagedByLabel: "vcluster"},
+				},
+				Spec: corev1.PodSpec{
+					HostNetwork: true,
+				},
+				Status: corev1.PodStatus{
+					PodIP: "10.0.0.1",
+				},
+			},
+			wantResult: nil,
+		},
+		{
+			name: "succeeded pod",
+			rawObj: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{ManagedByLabel: "vcluster"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodSucceeded,
+					PodIP: "10.0.0.1",
+				},
+			},
+			wantResult: nil,
+		},
+		{
+			name: "failed pod",
+			rawObj: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{ManagedByLabel: "vcluster"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					PodIP: "10.0.0.1",
+				},
+			},
+			wantResult: nil,
+		},
+		{
+			name: "deleted pod",
+			rawObj: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:            map[string]string{ManagedByLabel: "vcluster"},
+					DeletionTimestamp: &metav1.Time{},
+				},
+				Status: corev1.PodStatus{
+					PodIP: "10.0.0.1",
+				},
+			},
+			wantResult: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := podIPsIndexerFunc(tt.rawObj)
+
+			assert.Equal(t, tt.wantResult, got)
+		})
+	}
+}
+
 type mockDNSClient struct {
 	mock.Mock
 }
