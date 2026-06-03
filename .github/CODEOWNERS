@@ -1,6 +1,6 @@
 # Keep the entries sorted and optionally grouped.
 
-* @loft-sh/eng-dev-vcluster-platform
+* @loft-sh/eng-control-plane
 
 /.github/workflows/release.yaml @loft-sh/eng-devops @loft-sh/eng-tech-leads
 /.github/CODEOWNERS @loft-sh/eng-tech-leads
