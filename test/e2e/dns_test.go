@@ -83,7 +83,7 @@ func assertResolves(ctx context.Context, t *testing.T, cfg *envconf.Config, pod,
 		if err != nil {
 			return false, nil
 		}
-		return strings.Contains(out, want), nil
+		return strings.Contains(out, fmt.Sprintf("Address: %s", want)), nil
 	}, wait.WithContext(ctx), wait.WithTimeout(90*time.Second), wait.WithInterval(3*time.Second))
 
 	if err != nil {
@@ -103,7 +103,7 @@ func assertRefused(ctx context.Context, t *testing.T, cfg *envconf.Config, pod, 
 			return false, fmt.Errorf("query %q unexpectedly resolved from pod %q:\n%s", query, pod, out)
 		}
 		low := strings.ToLower(out)
-		if strings.Contains(low, "refused") || strings.Contains(low, "can't find") {
+		if strings.Contains(low, fmt.Sprintf("server can't find %s: refused", query)) {
 			return true, nil
 		}
 		// Some other transient failure (e.g. pod networking not ready) — retry.
