@@ -35,6 +35,7 @@ func TestDNSRouting(t *testing.T) {
 		Feature()
 
 	external := features.New("external queries route to the host upstream").
+		Setup(waitForServiceClusterIp(translatedName("test"), tenantNamespace)).
 		Assess("test.external.com resolves via the host resolver", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			assertResolves(ctx, t, cfg, translatedName("test"), "test.external.com", externalTestServiceIP)
 			return ctx

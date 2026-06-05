@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/e2e-framework/klient/k8s/resources"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/envfuncs"
@@ -82,20 +81,6 @@ func applyCorefile(ctx context.Context, cfg *envconf.Config) (context.Context, e
 	err = client.Resources(namespace).Update(ctx, &cm)
 	if err != nil {
 		return ctx, err
-	}
-
-	// restart kube-dns pods to pick up the updated Corefile
-	var podList corev1.PodList
-	err = client.Resources(namespace).List(ctx, &podList, resources.WithLabelSelector("k8s-app=kube-dns"))
-	if err != nil {
-		return ctx, err
-	}
-
-	for _, pod := range podList.Items {
-		err = client.Resources(namespace).Delete(ctx, &pod)
-		if err != nil {
-			return ctx, err
-		}
 	}
 
 	return ctx, nil
