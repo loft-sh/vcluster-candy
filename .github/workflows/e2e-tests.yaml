@@ -1,0 +1,46 @@
+name: E2E tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - v*
+    paths:
+      - "**.go"
+      - "chart/**"
+      - "Dockerfile"
+      - "test/e2e/**"
+      - ".github/workflows/e2e-tests.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Run e2e suite
+    runs-on: ubuntu-22.04
+    if: github.repository_owner == 'loft-sh' # do not run on forks
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: test/e2e/go.mod
+          cache: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      # kind itself is created by the test suite via the e2e-framework kind
+      # provider; we only need the kind binary available on PATH.
+      - name: Install kind
+        uses: helm/kind-action@v1.14.0
+        with:
+          install_only: true
+
+      - name: Run e2e tests
+        working-directory: test/e2e
+        run: go test ./... -v -timeout 20m
