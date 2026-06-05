@@ -50,12 +50,12 @@ func TestDNSRouting(t *testing.T) {
 		Feature()
 
 	unmanaged := features.New("queries from unmanaged pods are refused").
-		Setup(createTestPod("unmanaged")).
+		Setup(createUnmanagedPod("unmanaged")).
 		Assess("a lookup is refused", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			assertRefused(ctx, t, cfg, "unmanaged", "test.default.svc.cluster.local")
 			return ctx
 		}).
-		Teardown(deleteClientPod("unmanaged")).
+		Teardown(deleteUnmanagedPod("unmanaged")).
 		Feature()
 
 	testenv.Test(t, internal, external, unmanaged, hostNetwork)
@@ -114,7 +114,7 @@ func assertRefused(ctx context.Context, t *testing.T, cfg *envconf.Config, pod, 
 	}
 }
 
-func createTestPod(name string) features.Func {
+func createUnmanagedPod(name string) features.Func {
 	return func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 		r := cfg.Client().Resources(tenantNamespace)
 		pod := &corev1.Pod{
@@ -146,7 +146,7 @@ func createTestPod(name string) features.Func {
 	}
 }
 
-func deleteClientPod(name string) features.Func {
+func deleteUnmanagedPod(name string) features.Func {
 	return func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 		r := cfg.Client().Resources(tenantNamespace)
 		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: tenantNamespace}}
