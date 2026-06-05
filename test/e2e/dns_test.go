@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/loft-sh/vcluster/pkg/util/translate"
+	"github.com/loft-sh/vcluster-candy/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
@@ -62,7 +62,7 @@ func TestDNSRouting(t *testing.T) {
 }
 
 func translatedName(name string) string {
-	return translate.SafeConcatName(name, "x", "default", "x", tenantName)
+	return util.SafeConcatName(name, "x", "default", "x", tenantName)
 }
 
 func nslookup(ctx context.Context, r *resources.Resources, pod, query string) (string, error) {
