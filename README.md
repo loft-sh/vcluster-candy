@@ -15,9 +15,8 @@ query to the right upstream:
 Queries from pods that are not managed by a vcluster (i.e. that do not carry
 the `vcluster.loft.sh/managed-by` label) are answered with `REFUSED`.
 
-Both **UDP** and **TCP** listeners are started on port 53, and each request
-is forwarded upstream using a protocol-specific client (UDP queries are
-forwarded over UDP, TCP queries over TCP).
+Both **UDP** and **TCP** listeners are started on port 1053, exposed as port 53 on the `vcluster-candy` Service.
+Each request is forwarded upstream using a protocol-specific client (UDP queries are forwarded over UDP, TCP queries over TCP).
 
 ---
 
@@ -133,7 +132,7 @@ sync:
 | Flag                          | Default            | Description                                                                                                                         |
 |-------------------------------|--------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | `--node-name`                 | _(required)_       | Name of the node this instance runs on. Used to scope the pod cache to the local node. Injected by the chart from the downward API. |
-| `--dns-bind-address`          | `:53`              | Address the DNS server binds to (UDP and TCP listeners are started).                                                                |
+| `--dns-bind-address`          | `:1053`            | Address the DNS server binds to (UDP and TCP listeners are started).                                                                |
 | `--metrics-bind-address`      | `:9153`            | Address the Prometheus metrics endpoint binds to.                                                                                   |
 | `--health-probe-bind-address` | `:8081`            | Address the health/readiness endpoints bind to (`/healthz`, `/readyz`).                                                             |
 | `--internal-domains`          | `cluster.local`    | Comma-separated list of DNS suffixes considered "internal" to tenant clusters.                                                      |
@@ -151,7 +150,7 @@ Standard controller-runtime / zap logger flags are also accepted
 | `service.clusterIP`                         | _(required)_                                                      | Stable ClusterIP for the candy Service. **Must be set.**                              |
 | `resources`                                 | sensible defaults                                                 | CPU/memory limits and requests.                                                       |
 | `podSecurityContext`                        | `runAsNonRoot: true`, seccomp RuntimeDefault                      | Pod-level security context.                                                           |
-| `securityContext`                           | drops all caps, adds `NET_BIND_SERVICE`, `readOnlyRootFilesystem` | Container-level security context (needed because the proxy binds privileged port 53). |
+| `securityContext`                           | drops all caps, `readOnlyRootFilesystem`                          | Container-level security context. |
 | `livenessProbe` / `readinessProbe`          | HTTP `:8081`                                                      | Probes against the controller-runtime health endpoints.                               |
 | `nodeSelector` / `tolerations` / `affinity` | empty                                                             | Standard pod scheduling controls.                                                     |
 | `internalDomains`                           | empty                                                             | List of DNS suffixes considered "internal" to tenant clusters.                        |

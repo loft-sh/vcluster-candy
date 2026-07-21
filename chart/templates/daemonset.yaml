@@ -53,10 +53,10 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: dns
-              containerPort: 53
+              containerPort: 1053
               protocol: UDP
             - name: dns-tcp
-              containerPort: 53
+              containerPort: 1053
               protocol: TCP
             - name: metrics
               containerPort: 9153
