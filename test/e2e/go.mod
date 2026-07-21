@@ -1,6 +1,6 @@
 module github.com/loft-sh/vcluster-candy/test/e2e
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/loft-sh/vcluster-candy v0.1.0
