@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended",
     "docker:enableMajor",
-    ":separatePatchReleases"
+    ":separatePatchReleases",
+    "helpers:pinGitHubActionDigests"
   ],
   "labels": ["dependencies"],
   "prHourlyLimit": 3,
@@ -27,6 +28,16 @@
       "description": "Group Go module updates",
       "matchManagers": ["gomod"],
       "groupName": "go modules"
+    },
+    {
+      "description": "Keep internal actions on rolling tags",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "loft-sh/**"
+      ],
+      "pinDigests": false
     }
   ]
 }
