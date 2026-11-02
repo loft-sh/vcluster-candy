@@ -17,7 +17,7 @@ on:
 
 concurrency:
   group: push-head-images
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions: {}
 
