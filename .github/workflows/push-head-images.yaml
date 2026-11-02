@@ -1,0 +1,61 @@
+name: Push head images
+
+# The daily CVE scan reads ghcr.io/loft-sh/vcluster-candy:head, so it follows main.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Dockerfile"
+      - "go.mod"
+      - "go.sum"
+      - "vendor/**"
+      - "pkg/**"
+      - "cmd/**"
+      - ".github/workflows/push-head-images.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: push-head-images
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  publish:
+    if: github.repository_owner == 'loft-sh'
+
+    name: Publish vcluster-candy head image
+
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: read
+      packages: write       # Required to push to GHCR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+
+      - name: Build and push head image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/vcluster-candy:head
