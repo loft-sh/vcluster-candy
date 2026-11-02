@@ -32,12 +32,19 @@ jobs:
     permissions:
       contents: read
       packages: write       # Required to push to GHCR
+      id-token: write       # Required for Cosign keyless OIDC signing and provenance
+      attestations: write   # Required to publish build provenance attestation
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
+      - name: Setup Cosign
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+        with:
+          cosign-release: "v3.0.6"
 
       - name: Login to ghcr.io
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
@@ -54,8 +61,22 @@ jobs:
 
       - name: Build and push head image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: build-push-docker
         with:
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/vcluster-candy:head
+
+      - name: Sign head image
+        env:
+          IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/vcluster-candy:head
+          IMAGE_DIGEST: ${{ steps.build-push-docker.outputs.digest }}
+        run: cosign sign --yes "${IMAGE_TAG}@${IMAGE_DIGEST}"
+
+      - name: Attest head image build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/vcluster-candy
+          subject-digest: ${{ steps.build-push-docker.outputs.digest }}
+          push-to-registry: true
