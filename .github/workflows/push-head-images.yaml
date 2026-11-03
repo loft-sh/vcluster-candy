@@ -53,6 +53,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Record the current head image
+        id: previous-head
+        uses: loft-sh/github-actions/.github/actions/delete-previous-head-image@delete-previous-head-image/v1 # zizmor: ignore[unpinned-uses] -- internal loft-sh action, pinned by its own rolling tag by policy
+        with:
+          mode: record
+          image: ghcr.io/${{ github.repository_owner }}/vcluster-candy
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
 
@@ -80,3 +87,13 @@ jobs:
           subject-name: ghcr.io/${{ github.repository_owner }}/vcluster-candy
           subject-digest: ${{ steps.build-push-docker.outputs.digest }}
           push-to-registry: true
+
+      # Last step, so a failed build or push never deletes the image it replaces.
+      - name: Delete the previous head image
+        uses: loft-sh/github-actions/.github/actions/delete-previous-head-image@delete-previous-head-image/v1 # zizmor: ignore[unpinned-uses] -- internal loft-sh action, pinned by its own rolling tag by policy
+        with:
+          mode: delete
+          image: ghcr.io/${{ github.repository_owner }}/vcluster-candy
+          previous-digest: ${{ steps.previous-head.outputs.digest }}
+          current-digest: ${{ steps.build-push-docker.outputs.digest }}
+          dry-run: true
