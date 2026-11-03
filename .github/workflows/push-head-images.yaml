@@ -96,4 +96,3 @@ jobs:
           image: ghcr.io/${{ github.repository_owner }}/vcluster-candy
           previous-digest: ${{ steps.previous-head.outputs.digest }}
           current-digest: ${{ steps.build-push-docker.outputs.digest }}
-          dry-run: true
