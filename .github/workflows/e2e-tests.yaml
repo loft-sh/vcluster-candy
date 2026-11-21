@@ -26,7 +26,7 @@ jobs:
     if: github.repository_owner == 'loft-sh' # do not run on forks
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -35,7 +35,7 @@ jobs:
           cache: false
 
       - name: Set up Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Run e2e tests
         working-directory: test/e2e
